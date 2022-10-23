@@ -75,10 +75,11 @@ Consider the two variables we are working with from above:
 
 The first argument of `ggplot()` is the dataset to use in the graph. All we have created is a coordinate system. Without specifying another layer to the plot, we essentially have an empty plot. 
 
-
 ```{r}
 ggplot(horror_temp, aes(x=review_rating, y=budget_nm)) 
 ```
+
+We add things to the plot with `+`. For a scatter plot, we use `geom_point()` and then we add features to our plot, such as the title and axes labels. Let's try and plot the scatter plot for the review ratings vs. the budget. 
 
 ```{r}
 
@@ -88,21 +89,20 @@ ggplot(horror_temp, aes(x=review_rating, y=budget_nm)) +
   ylab("Budget") +
   xlab("Movie Rating")
 ```
-The scale of measurement is too large for budget. We may be better off looking at the log of budget.  Here plot `review_rating` on the x-axis and `log(budget)` on the y-axis:
+
+The scale of measurement is too large for budget. We may be better off looking at the log of budget. Here plot `review_rating` on the x-axis and `log(budget)` transformation on the y-axis:
 
 ```{r}
 #check the budget on the log scale
 
-ggplot(horror_temp, aes(x=review_rating, y=log_budget_nm)) +
+ggplot(horror_temp, aes(x=review_rating, y=log(budget_nm))) +
   geom_point() +
-  geom_smooth(method='lm',formula=y~x) +
   ggtitle("Tidy Tuesday Horror Movie Ratings vs Budget") +
   ylab("log(Budget)") +
   xlab("Movie Rating")
-
 ```
 
-The plot shows that the 'log(Budget)' and 'movie rating' does not appear to be strongly related. In other words, within the context of dollars ($) it does not appear that budgets don't help with horror movie ratings. 
+The plot shows that the 'log(Budget)' and 'movie rating' does not appear to be strongly related as they seem to be randomly distributed across our plot. In other words, within the context of dollars ($), it does not appear that budgets are correlated with the horror movie ratings. 
 
 ##Exercises
 
@@ -112,15 +112,25 @@ The plot shows that the 'log(Budget)' and 'movie rating' does not appear to be s
 library(tidyverse)
 
 glimpse(horror_movies)
-#view(horror_movies)
+view(horror_movies)
 
 #?help(lm)
 ```
 Have a look at the descriptions for each of the variables. https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-10-22
 
 1.  Run `ggplot(data = horror_movies)`. What do you see?
+```{r}
+ggplot(data=horror_movies)
+```
+
+Again, we have a blank plot and we have given a dataframe, not variables, to plot.
 
 2.  How many rows are in `horror_movies`? How many columns?
+```{r}
+dim(horror_movies)
+```
+
+We check the dimensions of our dataset to see that we have 3328 rows and 12 columns. 
 
 3.    How many levels does `release_country` variable have?  Glimpse at  the`release_country` to find out.
 
@@ -128,57 +138,61 @@ Have a look at the descriptions for each of the variables. https://github.com/rf
 defaultW <- getOption("warn") 
 
 options(warn = -1) 
-#glimpse(language)
-#language=as.factor(release_country)
-#levels(release_country)
+glimpse(language)
+language= as.factor(horror_movies$release_country)
 ```
-
 
 4. Let's  make a boxplot for 'release date' versus 'frequency' per month.
 ```{r}
 library(lubridate)
 horror_movies <- horror_movies %>% 
+  # Ignore any NA release dates
   filter(!is.na(release_date)) %>% 
+  # Transform our dates to be the month
   mutate(month = month(dmy(release_date), label=T, abbr=F)) %>% 
   # Remove if month is unknown
   filter(!is.na(month))
-
 
 #movies released per country
 total_country = horror_movies %>% 
   count(release_country, name="total_country")
 
-# create the data frame for release month vs country
+# create the data frame for release month vs country (further breaking down the data)
 horror_movies_month = horror_movies %>% 
-
   count(release_country, month) %>% 
 
-  #From help(left_join): The mutating joins add columns from y to x, matching rows based on the keys. Merge totals  by adding columns from y to x per month and country;
+  #From help(left_join): The mutating joins add columns from y to x, matching rows based on the keys. Merge totals  by adding columns from y to x per month and country
   left_join(total_country) %>%
   
   # Filter: take only countries with more than 5 movie releases into account
   filter(total_country >= 5) %>% 
-  mutate(percentage = n / total_country) 
+  mutate(percentage = n / total_country) # We want the percentage of releases for each country
   
   #Let's see what we have created
   view(horror_movies_month)
-  
-ggplot(data=horror_movies_month, aes(x=month, y=percentage, fill=reorder(month, total_country, sum))) + geom_boxplot()
-
-help("reorder")
-
 ```
 
-     
- 5. What if we want to look at the percentages for countries with at least 10 release dates?  Change the box plot accordingly. 
+Now, let's plot the dataframe that we have created. We add one more feature to our plot to rotate the x-axes labels so that they are vertical. This makes it easier to read them without having each month overlapping the next. 
+```{r}
+ggplot(data=horror_movies_month, aes(x=month, y=percentage, fill=reorder(month, total_country, sum))) + geom_boxplot() +
+  theme(axis.text.x=element_text(angle = -90, hjust = 0))
+```
 
-6. What happens if you  want to make a boxplot of `percent` vs `month` for Spain? Hint:
+ 5. What if we want to look at the percentages for countries with at least 10 release dates?  Change the box plot accordingly. 
+ 
+If we wanted to do this, we would simply update `filter(total_country >= 5)` to `filter(total_country >= 10)`. 
+
+6. What happens if you  want to make a boxplot of `percent` vs `month` for Spain? Hint: How can you use filters to your benefit here?
 
 ```{r}
 horror_movies_spain <- horror_movies_month %>% filter(release_country == "Spain")
 glimpse(horror_movies_spain)  
 ```
+```{r}
+ggplot(data=horror_movies_spain, aes(x=month, y=percentage, fill=reorder(month, total_country, sum))) + geom_boxplot()
+```
 
+We can see from our data, we have less data for spain so our box plot is much smaller than our overall data.
 
 ##Aesethetic mappings/Features 
 
