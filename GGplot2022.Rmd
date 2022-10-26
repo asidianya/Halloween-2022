@@ -261,18 +261,38 @@ To facet your plot by a single variable, use `facet_wrap()`. The first argument 
 
 
 ```{r}
-movies_h %>% 
-  group_by(month, movie_rating) %>% 
-  summarize(revenue=sum(budget_m)) %>% 
-  ggplot(aes(month, revenue)) + 
+movies <-horror_movies  %>%  mutate(release_parsed = parse_date(release_date,
+                                     format = "%d-%b-%y") )
+
+
+movies <- movies %>% mutate(years = ifelse( is.na(release_parsed),release_date, year(release_parsed) ),
+                            month_num = ifelse( is.na(release_parsed),release_date, month(release_parsed) )) %>% 
+  mutate(movies,month = month.abb[month(movies$release_parsed)]) %>%
+  mutate(budget_m= as.numeric(gsub("[[:punct:]]","",budget))) 
+
+
+budget_MU <- substr(movies$budget,1,1)
+movies_h<- movies[which(budget_MU=="$"),] %>% arrange(month_num)
+
+
+movies_i <- movies_h %>% 
+  mutate(month_num = as.factor(month_num)) %>% 
+  group_by(month, month_num, movie_rating) %>% 
+  summarize(revenue=mean(budget_m)) %>% 
+  arrange(month_num)
+
+movies_i %>% 
+  ggplot(aes(x = fct_inorder(month), revenue)) + 
   geom_col(aes(fill=movie_rating)) + 
   scale_y_continuous(labels=dollar_format()) + 
   
   scale_fill_manual("legend", values = c("E" = "yellow", "NOT RATED" = "orange", 
                                          "PG" = "black", "PG-13"="brown","R"="gold", 
                                          "TV-14"="gray", "TV-MA"="red", "UNRATED"="Wheat",
-                                         "NA=pink1")) +
-  labs(x="", y="movie budget", title="Worldwide Film Budget by month")  +facet_wrap(~movie_rating)
+                                         "NA"="darkgray")) +
+  labs(x="", y="movie budget", title="Worldwide Film Budget by month")  + facet_wrap(~movie_rating, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = -45, vjust = 0))
+  # scale_x_discrete(limits=movies_i$month)
 ```
 
 #In American films rated R films tend to have the highest budget. 
@@ -280,6 +300,27 @@ movies_h %>%
 Question:
 
 1.  What does the plot above tell us about the budget (in dollars) for each each movie rating type? Note this is most likely USA when we subset based on dollars. 
+
+Facet wrap is just a feature we add at the end of the ggplot operations. We can do a facet wrap of other types of plots as well.
+```{r, fig.height=9}
+ggplot(data=movies_h, aes(x=movie_rating, y=review_rating, fill= movie_rating )) + 
+  geom_boxplot() + 
+  facet_wrap(~fct_inorder(month), scales = "free_y") + 
+  theme(axis.text.x = element_text(angle = -90, vjust = 0))
+```
+
+```{r}
+movies_h$movie_run_time <- as.numeric(gsub("min","", movies_h$movie_run_time))
+```
+
+```{r, fig.height=9}
+
+ggplot(data=movies_h, aes(x=movie_run_time, color = movie_rating, fill = movie_rating )) + 
+  geom_density(alpha = 0.4) + 
+  facet_wrap(~fct_inorder(month), scales = "free_y") + 
+  theme(axis.text.x = element_text(angle = 0, vjust = 0))
+```
+
 
 #challenge 
 
