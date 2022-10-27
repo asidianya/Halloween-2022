@@ -29,9 +29,13 @@ glimpse(horror_movies)
 
 Among missing observations there are transformations we should make on the variables pertaining to dates (days, months, years, etc.) to make them functional. 
 
-At times (i.e. most of the tutorial) we will make use of the tidyverse pipeline that allows us to manipulation or variables without having to use the built in slower base R commands.
+At times (i.e. most of the tutorial) we will make use of the tidyverse pipeline that allows us to manipulation variables without having to use the built in slower base R commands.
 
-Tip: The keyboard short cut to make a pipe (%>%) is Cmd+Shift+M on Mac and Ctrl+Shift+M on PC. 
+Tip 1: The keyboard short cut to make a code block it is Cmd+Shft+I on Mac and Ctrl+Alt+I on PC. 
+
+Tip 2: The keyboard short cut to make a pipe (%>%) is Cmd+Shift+M on Mac and Ctrl+Shift+M on PC. 
+
+
 
 #Example: #adapted from https://github.com/IEORTools/tidytuesday/blob/master/horror_movies.R
 
@@ -64,6 +68,10 @@ glimpse(horror_temp)
 Question:
 
 1. What does the gsub() function do to the budget variable? 
+Answer: It takes the bracket expression and replaces it with desired output. Symbols and punctuation replaced/removed.
+
+More information: https://www.regular-expressions.info/posixbrackets.html
+
 
 ### Creating a ggplot
 
@@ -75,11 +83,10 @@ Consider the two variables we are working with from above:
 
 The first argument of `ggplot()` is the dataset to use in the graph. All we have created is a coordinate system. Without specifying another layer to the plot, we essentially have an empty plot. 
 
+
 ```{r}
 ggplot(horror_temp, aes(x=review_rating, y=budget_nm)) 
 ```
-
-We add things to the plot with `+`. For a scatter plot, we use `geom_point()` and then we add features to our plot, such as the title and axes labels. Let's try and plot the scatter plot for the review ratings vs. the budget. 
 
 ```{r}
 
@@ -89,22 +96,26 @@ ggplot(horror_temp, aes(x=review_rating, y=budget_nm)) +
   ylab("Budget") +
   xlab("Movie Rating")
 ```
+The scale of measurement is too large for budget. We may be better off looking at the log of budget. 
 
-The scale of measurement is too large for budget. We may be better off looking at the log of budget. Here plot `review_rating` on the x-axis and `log(budget)` transformation on the y-axis:
+
+Exercise (at home): Here plot `review_rating` on the x-axis and `log(budget)` on the y-axis:
 
 ```{r}
 #check the budget on the log scale
 
-ggplot(horror_temp, aes(x=review_rating, y=log(budget_nm))) +
+ggplot(horror_temp, aes(x=review_rating, y=log_budget_nm)) +
   geom_point() +
+  geom_smooth(method='lm',formula=y~x) +
   ggtitle("Tidy Tuesday Horror Movie Ratings vs Budget") +
   ylab("log(Budget)") +
   xlab("Movie Rating")
+
 ```
 
-The plot shows that the 'log(Budget)' and 'movie rating' does not appear to be strongly related as they seem to be randomly distributed across our plot. In other words, within the context of dollars ($), it does not appear that budgets are correlated with the horror movie ratings. 
+The plot shows that the 'log(Budget)' and 'movie rating' does not appear to be strongly related. In other words, within the context of dollars ($) it does not appear that budgets don't help with horror movie ratings. 
 
-##Exercises
+##Questions 
 
 #Let's glimpse at our data. What could have mentioned earlier is that ggplot is a feature inside of tidyverse, but you can also install it externally. 
 ```{r}
@@ -112,92 +123,86 @@ The plot shows that the 'log(Budget)' and 'movie rating' does not appear to be s
 library(tidyverse)
 
 glimpse(horror_movies)
-view(horror_movies)
+#view(horror_movies)
 
 #?help(lm)
 ```
 Have a look at the descriptions for each of the variables. https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-10-22
 
-1.  Run `ggplot(data = horror_movies)`. What do you see?
-```{r}
-ggplot(data=horror_movies)
-```
+Exercise 1.  How many rows are in `horror_movies`? How many columns?
 
-Again, we have a blank plot and we have given a dataframe, not variables, to plot.
-
-2.  How many rows are in `horror_movies`? How many columns?
-```{r}
-dim(horror_movies)
-```
-
-We check the dimensions of our dataset to see that we have 3328 rows and 12 columns. 
-
-3.    How many levels does `release_country` variable have?  Glimpse at  the`release_country` to find out.
+Exercise 2.    How many levels does `release_country` variable have?  Glimpse at  the`release_country` to find out.
 
 ```{r, message=FALSE}
 defaultW <- getOption("warn") 
 
 options(warn = -1) 
-glimpse(language)
-language= as.factor(horror_movies$release_country)
+#glimpse(language)
+#language=as.factor(release_country)
+#levels(release_country)
 ```
 
-4. Let's  make a boxplot for 'release date' versus 'frequency' per month.
+EX 1.  Let's  make a data frame for 'release date' versus 'frequency' per month.
 ```{r}
 library(lubridate)
 horror_movies <- horror_movies %>% 
-  # Ignore any NA release dates
   filter(!is.na(release_date)) %>% 
-  # Transform our dates to be the month
   mutate(month = month(dmy(release_date), label=T, abbr=F)) %>% 
   # Remove if month is unknown
   filter(!is.na(month))
+
 
 #movies released per country
 total_country = horror_movies %>% 
   count(release_country, name="total_country")
 
-# create the data frame for release month vs country (further breaking down the data)
+# create the data frame for release month vs country
 horror_movies_month = horror_movies %>% 
+
   count(release_country, month) %>% 
 
-  #From help(left_join): The mutating joins add columns from y to x, matching rows based on the keys. Merge totals  by adding columns from y to x per month and country
+  #From help(left_join): The mutating joins add columns from y to x, matching rows based on the keys. Merge totals  by adding columns from y to x per month and country;
   left_join(total_country) %>%
   
   # Filter: take only countries with more than 5 movie releases into account
   filter(total_country >= 5) %>% 
-  mutate(percentage = n / total_country) # We want the percentage of releases for each country
+  mutate(percentage = n / total_country) 
   
   #Let's see what we have created
   view(horror_movies_month)
+  
 ```
 
-Now, let's plot the dataframe that we have created. We add one more feature to our plot to rotate the x-axes labels so that they are vertical. This makes it easier to read them without having each month overlapping the next. 
-```{r}
-ggplot(data=horror_movies_month, aes(x=month, y=percentage, fill=reorder(month, total_country, sum))) + geom_boxplot() +
-  theme(axis.text.x=element_text(angle = -90, hjust = 0))
-```
 
- 5. What if we want to look at the percentages for countries with at least 10 release dates?  Change the box plot accordingly. 
- 
-If we wanted to do this, we would simply update `filter(total_country >= 5)` to `filter(total_country >= 10)`. 
 
-6. What happens if you  want to make a boxplot of `percent` vs `month` for Spain? Hint: How can you use filters to your benefit here?
+EX 2.  What happens if you  want to make a data frame of `percent` vs `month` for Spain? Hint:
 
 ```{r}
 horror_movies_spain <- horror_movies_month %>% filter(release_country == "Spain")
 glimpse(horror_movies_spain)  
 ```
+
+
+-- switch 
+
+EX 3. Let's make a box plot of 'release month' versus 'country':
+
 ```{r}
-ggplot(data=horror_movies_spain, aes(x=month, y=percentage, fill=reorder(month, total_country, sum))) + geom_boxplot()
+ggplot(data=horror_movies_month, aes(x=month, y=percentage, fill=reorder(month, total_country, sum))) + geom_boxplot()
+
 ```
 
-We can see from our data, we have less data for spain so our box plot is much smaller than our overall data.
 
-##Aesethetic mappings/Features 
+   
+ Exercise 3. What if we want to look at the percentages for countries with at least 10 release dates?  Change the box plot accordingly. 
+ 
 
->#Allow us to take a closer look at potentially missing information, such as outliers. 
 
+Exercise 4. What happens if you  want to make a box plot of `percent` vs `month` for Spain? 
+
+##Aesthetics
+
+#Allow us to take a closer look at potentially missing information, such as outliers. 
 ```{r}
 ggplot(horror_temp, aes(x=review_rating, y=budget_nm))+
   geom_point() + 
@@ -222,13 +227,8 @@ movies <- movies %>% mutate(years=ifelse(is.na(release_parsed),
                               year(release_parsed))) %>% 
   mutate(movies,month = month.abb[month(movies$release_parsed)]) %>%
   mutate(budget_m= as.numeric(gsub("[[:punct:]]","",budget))) 
-
-
 budget_MU <- substr(movies$budget,1,1)
-
-
 movies_h<- movies[which(budget_MU=="$"),]
-
 movies_h %>% 
   group_by(month, movie_rating) %>% 
   summarize(revenue=sum(budget_m)) %>% 
@@ -239,48 +239,33 @@ movies_h %>%
   scale_fill_manual("legend", values = c("E" = "yellow", "NOT RATED" = "orange", 
                                          "PG" = "black", "PG-13"="brown","R"="gold", 
                                          "TV-14"="gray", "TV-MA"="red", "UNRATED"="Wheat",
-                                         "NA=pink1")) +
+                                         "NA"="dark gray")) +
   labs(x="", y="movie budget", title="Worldwide Film Budget by month")
-
 ```
 For the month of October it seems as that the budget is greater for almost all movie ratings. However, the budget is higher for rated R movies. This is true for US dollars; the trend may differ for EUROs  (difference audience).
-
 #Challenge: Replace $(dollars) by euros to determine if there is a difference in  budgets across the different months (and movie ratings). 
-
 ```{r}
 #Hint we may want to change the units of this variable.   
 #movies_h<- movies[which(budget_MU=="$"),]
 ```
 
-
 ## Facets
-
 One way to add additional variables is with aesthetics. Another way, particularly useful for categorical variables, is to split your plot into facets, subplots that each display one subset of the data. 
-
 To facet your plot by a single variable, use `facet_wrap()`. The first argument of `facet_wrap()` should be a formula, which is the name of your data structure that you wish to subset on. Thus variable that you pass to `facet_wrap()` should be discrete.  
-
-
 ```{r}
 movies <-horror_movies  %>%  mutate(release_parsed = parse_date(release_date,
                                      format = "%d-%b-%y") )
-
-
 movies <- movies %>% mutate(years = ifelse( is.na(release_parsed),release_date, year(release_parsed) ),
                             month_num = ifelse( is.na(release_parsed),release_date, month(release_parsed) )) %>% 
   mutate(movies,month = month.abb[month(movies$release_parsed)]) %>%
   mutate(budget_m= as.numeric(gsub("[[:punct:]]","",budget))) 
-
-
 budget_MU <- substr(movies$budget,1,1)
 movies_h<- movies[which(budget_MU=="$"),] %>% arrange(month_num)
-
-
 movies_i <- movies_h %>% 
   mutate(month_num = as.factor(month_num)) %>% 
   group_by(month, month_num, movie_rating) %>% 
   summarize(revenue=mean(budget_m)) %>% 
   arrange(month_num)
-
 movies_i %>% 
   ggplot(aes(x = fct_inorder(month), revenue)) + 
   geom_col(aes(fill=movie_rating)) + 
@@ -294,13 +279,9 @@ movies_i %>%
   theme(axis.text.x = element_text(angle = -45, vjust = 0))
   # scale_x_discrete(limits=movies_i$month)
 ```
-
 #In American films rated R films tend to have the highest budget. 
-
 Question:
-
 1.  What does the plot above tell us about the budget (in dollars) for each each movie rating type? Note this is most likely USA when we subset based on dollars. 
-
 Facet wrap is just a feature we add at the end of the ggplot operations. We can do a facet wrap of other types of plots as well.
 ```{r, fig.height=9}
 ggplot(data=movies_h, aes(x=movie_rating, y=review_rating, fill= movie_rating )) + 
@@ -308,36 +289,25 @@ ggplot(data=movies_h, aes(x=movie_rating, y=review_rating, fill= movie_rating ))
   facet_wrap(~fct_inorder(month), scales = "free_y") + 
   theme(axis.text.x = element_text(angle = -90, vjust = 0))
 ```
-
 ```{r}
 movies_h$movie_run_time <- as.numeric(gsub("min","", movies_h$movie_run_time))
 ```
-
 ```{r, fig.height=9}
-
 ggplot(data=movies_h, aes(x=movie_run_time, color = movie_rating, fill = movie_rating )) + 
   geom_density(alpha = 0.4) + 
   facet_wrap(~fct_inorder(month), scales = "free_y") + 
   theme(axis.text.x = element_text(angle = 0, vjust = 0))
 ```
-
-
 #challenge 
-
 Code adapted from https://twitter.com/committedtotape/status/1187109093003223040
-
 To complete the graphic you need to download [Ghostscript and Extrafont](https://cran.r-project.org/web/packages/extrafont/README.html)
-
 ```{r, message=FALSE}
 #install.packages("extrafont")
 library(extrafont)
 defaultW <- getOption("warn") 
-
 options(warn = -1) 
-
 #extrafont::loadfonts(device="win")
 #extrafont::fonttable()
-
 #movie count by each month/year
 #warning regarding some dates not parsed as they only contain the year of release, not the full date
 month_year_count <- horror_movies %>% 
@@ -346,7 +316,6 @@ month_year_count <- horror_movies %>%
   count(month_year)%>% 
   mutate(n=n*-1)%>% 
   filter(!is.na(month_year))
-
 ggplot(month_year_count, aes(x=month_year, y=n))+
 #round segment lines look more like dripping blood then squared columns
 geom_segment(aes(xend=month_year, yend=0), colour="red", lineend = "round", size=4) + 
@@ -390,9 +359,9 @@ theme_void()+
         axis.text.y.right=element_text(colour="white", family="YouMurderer BB", size=14),
         plot.caption = element_text(color="red", family="Courier New", size=10),
         plot.margin = margin(10,10,10,10))
-
 ggsave("horror movie releases.png", width=8, height=8)
 ```
+
 
 ##Resources 
 
